@@ -46,7 +46,7 @@ class EmailRecipientsImport implements ToModel, WithHeadingRow, WithValidation, 
     {
         return [
             'email' => 'required|email',
-            'e_posta' => 'required_without:email|email',
+            '*.email' => 'required|email',
         ];
     }
 

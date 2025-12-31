@@ -17,10 +17,14 @@ class SendCampaignEmail implements ShouldQueue
     public $timeout = 60;
     public $tries = 3;
 
+    private int $delaySeconds; // İsim değişti: $delay -> $delaySeconds
+
     public function __construct(
         private EmailRecipient $recipient,
-        private int $delay = 1
+        int $delay = 1
     ) {
+        $this->delaySeconds = $delay; // İsim değişti
+
         // Gecikme ile queue'ya ekle
         $this->delay($delay);
     }
