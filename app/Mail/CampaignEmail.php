@@ -18,7 +18,9 @@ class CampaignEmail extends Mailable
         private string $emailBody,
         private string $fromEmail,
         private string $fromName,
-        private ?string $recipientName = null
+        private ?string $recipientName = null,
+        private ?string $trackingPixelUrl = null,
+        private ?int $recipientId = null
     ) {}
 
     public function envelope(): Envelope
@@ -31,11 +33,26 @@ class CampaignEmail extends Mailable
 
     public function content(): Content
     {
+        // Link'leri tracking URL'leri ile değiştir
+        $processedBody = $this->emailBody;
+
+        // Recipient ID'yi link'lere ekle
+        if ($this->recipientId) {
+            $processedBody = str_replace(
+                'href="',
+                'href="' . url('/') . '?r=' . $this->recipientId . '&url=',
+                $processedBody
+            );
+        }
+
         return new Content(
             view: 'emails.campaign',
             with: [
                 'body' => $this->emailBody,
+                'processedBody' => $processedBody,
                 'recipientName' => $this->recipientName,
+                'fromName' => $this->fromName,
+                'trackingPixelUrl' => $this->trackingPixelUrl,
             ],
         );
     }

@@ -21,6 +21,11 @@
                 <p class="mt-1 text-sm text-gray-600">{{ $campaign->subject }}</p>
             </div>
             <div class="flex space-x-2">
+                <!-- Analytics Button -->
+                <a href="{{ route('campaigns.analytics', $campaign) }}"
+                class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition">
+                    <i class="fas fa-chart-bar mr-2"></i>Analitik Rapor
+                </a>
                 @if($campaign->status === 'draft' || $campaign->status === 'scheduled')
                     <form action="{{ route('campaigns.start', $campaign) }}" method="POST" class="inline">
                         @csrf

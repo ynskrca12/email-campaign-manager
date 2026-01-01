@@ -10,6 +10,10 @@ use Illuminate\Support\Facades\Log;
 
 class EmailService
 {
+    public function __construct(
+        private EmailTrackingService $trackingService
+    ) {}
+
     public function sendEmail(string $to, string $toName, string $subject, string $body, string $fromEmail, string $fromName): bool
     {
         try {
@@ -51,14 +55,22 @@ class EmailService
         // Değişkenleri değiştir ({{name}}, {{email}} gibi)
         $body = $this->replaceVariables($campaign->body, $recipient);
 
+        // Link tracking ekle
+        $bodyWithTracking = $this->trackingService->replaceLinksWithTracking($body, $campaign);
+
+        // Tracking pixel URL oluştur
+        $trackingPixelUrl = $this->trackingService->generateTrackingPixel($campaign, $recipient);
+
         try {
             Mail::to($recipient->email)
                 ->send(new CampaignEmail(
                     $campaign->subject,
-                    $body,
+                    $bodyWithTracking,
                     $campaign->from_email,
                     $campaign->from_name,
-                    $recipient->name
+                    $recipient->name,
+                    $trackingPixelUrl,
+                    $recipient->id
                 ));
 
             $recipient->update([

@@ -54,4 +54,38 @@ class EmailCampaign extends Model
         }
         return round(($this->sent_count / $this->total_recipients) * 100, 2);
     }
+
+    public function opens(): HasMany
+    {
+        return $this->hasMany(EmailOpen::class, 'campaign_id');
+    }
+
+    public function clicks(): HasMany
+    {
+        return $this->hasMany(EmailClick::class, 'campaign_id');
+    }
+
+    public function trackingLinks(): HasMany
+    {
+        return $this->hasMany(TrackingLink::class, 'campaign_id');
+    }
+
+    // İstatistikler
+    public function getOpenRateAttribute(): float
+    {
+        if ($this->sent_count === 0) {
+            return 0;
+        }
+        $uniqueOpens = $this->opens()->distinct('email')->count('email');
+        return round(($uniqueOpens / $this->sent_count) * 100, 2);
+    }
+
+    public function getClickRateAttribute(): float
+    {
+        if ($this->sent_count === 0) {
+            return 0;
+        }
+        $uniqueClicks = $this->clicks()->distinct('email')->count('email');
+        return round(($uniqueClicks / $this->sent_count) * 100, 2);
+    }
 }
