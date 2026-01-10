@@ -49,75 +49,75 @@ class EmailService
     }
 
     public function sendCampaignEmail(EmailRecipient $recipient): bool
-    {
-        $campaign = $recipient->campaign;
+{
+    $campaign = $recipient->campaign;
 
-        // Değişkenleri değiştir ({{name}}, {{email}} gibi)
-        $body = $this->replaceVariables($campaign->body, $recipient);
+    // Değişkenleri değiştir ({{name}}, {{email}} gibi)
+    $body = $this->replaceVariables($campaign->body, $recipient);
 
-        // Link tracking ekle
-        $bodyWithTracking = $this->trackingService->replaceLinksWithTracking($body, $campaign);
+    // Link tracking KAPALI (geçici)
+    // $bodyWithTracking = $this->trackingService->replaceLinksWithTracking($body, $campaign);
 
-        // Tracking pixel URL oluştur
-        $trackingPixelUrl = $this->trackingService->generateTrackingPixel($campaign, $recipient);
+    // Tracking pixel URL oluştur
+    $trackingPixelUrl = $this->trackingService->generateTrackingPixel($campaign, $recipient);
 
-        try {
-            Mail::to($recipient->email)
-                ->send(new CampaignEmail(
-                    $campaign->subject,
-                    $bodyWithTracking,
-                    $campaign->from_email,
-                    $campaign->from_name,
-                    $recipient->name,
-                    $trackingPixelUrl,
-                    $recipient->id
-                ));
+    try {
+        Mail::to($recipient->email)
+            ->send(new CampaignEmail(
+                $campaign->subject,
+                $body, // bodyWithTracking yerine body
+                $campaign->from_email,
+                $campaign->from_name,
+                $recipient->name,
+                $trackingPixelUrl,
+                $recipient->id
+            ));
 
-            $recipient->update([
-                'status' => 'sent',
-                'sent_at' => now(),
-            ]);
+        $recipient->update([
+            'status' => 'sent',
+            'sent_at' => now(),
+        ]);
 
-            $campaign->increment('sent_count');
+        $campaign->increment('sent_count');
 
-            EmailLog::create([
-                'campaign_id' => $campaign->id,
-                'recipient_id' => $recipient->id,
-                'to_email' => $recipient->email,
-                'to_name' => $recipient->name,
-                'subject' => $campaign->subject,
-                'status' => 'sent',
-                'sent_at' => now(),
-            ]);
+        EmailLog::create([
+            'campaign_id' => $campaign->id,
+            'recipient_id' => $recipient->id,
+            'to_email' => $recipient->email,
+            'to_name' => $recipient->name,
+            'subject' => $campaign->subject,
+            'status' => 'sent',
+            'sent_at' => now(),
+        ]);
 
-            return true;
-        } catch (\Exception $e) {
-            Log::error('Kampanya email hatası: ' . $e->getMessage(), [
-                'campaign_id' => $campaign->id,
-                'recipient_id' => $recipient->id,
-            ]);
+        return true;
+    } catch (\Exception $e) {
+        \Log::error('Kampanya email hatası: ' . $e->getMessage(), [
+            'campaign_id' => $campaign->id,
+            'recipient_id' => $recipient->id,
+        ]);
 
-            $recipient->update([
-                'status' => 'failed',
-                'error_message' => $e->getMessage(),
-            ]);
+        $recipient->update([
+            'status' => 'failed',
+            'error_message' => $e->getMessage(),
+        ]);
 
-            $campaign->increment('failed_count');
+        $campaign->increment('failed_count');
 
-            EmailLog::create([
-                'campaign_id' => $campaign->id,
-                'recipient_id' => $recipient->id,
-                'to_email' => $recipient->email,
-                'to_name' => $recipient->name,
-                'subject' => $campaign->subject,
-                'status' => 'failed',
-                'error_message' => $e->getMessage(),
-                'sent_at' => now(),
-            ]);
+        EmailLog::create([
+            'campaign_id' => $campaign->id,
+            'recipient_id' => $recipient->id,
+            'to_email' => $recipient->email,
+            'to_name' => $recipient->name,
+            'subject' => $campaign->subject,
+            'status' => 'failed',
+            'error_message' => $e->getMessage(),
+            'sent_at' => now(),
+        ]);
 
-            return false;
-        }
+        return false;
     }
+}
 
     private function replaceVariables(string $content, EmailRecipient $recipient): string
     {

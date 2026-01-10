@@ -22,21 +22,32 @@ class EmailTrackingService
     }
 
     /**
-     * Link'leri tracking URL'leri ile değiştir
-     */
-    public function replaceLinksWithTracking(string $content, EmailCampaign $campaign): string
-    {
-        // HTML içindeki tüm link'leri bul
-        $pattern = '/<a\s+(?:[^>]*?\s+)?href="([^"]*)"/i';
+ * Link'leri tracking URL'leri ile değiştir
+ */
+public function replaceLinksWithTracking(string $content, EmailCampaign $campaign): string
+{
+    // HTML içindeki tüm link'leri bul
+    $pattern = '/<a\s+(?:[^>]*?\s+)?href="([^"]*)"/i';
 
-        return preg_replace_callback($pattern, function ($matches) use ($campaign) {
-            $originalUrl = $matches[1];
+    return preg_replace_callback($pattern, function ($matches) use ($campaign) {
+        $originalUrl = $matches[1];
 
-            // Zaten tracking URL'i ise dokunma
-            if (str_contains($originalUrl, route('tracking.click', '', false))) {
-                return $matches[0];
-            }
+        // Zaten tracking URL'i ise dokunma
+        if (str_contains($originalUrl, 'tracking/click') || str_contains($originalUrl, 'tracking/pixel')) {
+            return $matches[0];
+        }
 
+        // Anchor link (#) veya mailto: ise dokunma
+        if (str_starts_with($originalUrl, '#') || str_starts_with($originalUrl, 'mailto:')) {
+            return $matches[0];
+        }
+
+        // Boş URL kontrolü
+        if (empty($originalUrl) || $originalUrl === '' || $originalUrl === 'http://' || $originalUrl === 'https://') {
+            return $matches[0];
+        }
+
+        try {
             // Tracking link oluştur veya varsa al
             $trackingLink = TrackingLink::firstOrCreate(
                 [
@@ -44,15 +55,33 @@ class EmailTrackingService
                     'original_url' => $originalUrl,
                 ],
                 [
-                    'tracking_hash' => Str::random(32),
+                    'tracking_hash' => \Illuminate\Support\Str::random(32),
                 ]
             );
+
+            // Hash kontrolü
+            if (empty($trackingLink->tracking_hash)) {
+                \Log::warning('Tracking hash boş!', [
+                    'tracking_link_id' => $trackingLink->id,
+                    'url' => $originalUrl
+                ]);
+                return $matches[0]; // Hata varsa orijinal URL'i döndür
+            }
 
             $trackingUrl = route('tracking.click', ['hash' => $trackingLink->tracking_hash]);
 
             return str_replace($originalUrl, $trackingUrl, $matches[0]);
-        }, $content);
-    }
+
+        } catch (\Exception $e) {
+            \Log::error('Link tracking hatası: ' . $e->getMessage(), [
+                'url' => $originalUrl,
+                'campaign_id' => $campaign->id
+            ]);
+            return $matches[0]; // Hata varsa orijinal linki döndür
+        }
+
+    }, $content);
+}
 
     /**
      * Email açılma kaydı

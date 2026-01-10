@@ -46,7 +46,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Gönderen Adı *</label>
                     <input type="text"
                            name="from_name"
-                           value="{{ old('from_name', config('mail.from.name')) }}"
+                           value="Sigorta Yönetim Sistemi"
                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                            placeholder="Şirket Adı"
                            required>

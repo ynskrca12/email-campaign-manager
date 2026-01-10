@@ -28,7 +28,21 @@ class ProcessEmailCampaign implements ShouldQueue
 
         $recipients = $this->campaign->pendingRecipients()->get();
 
-        foreach ($recipients as $recipient) {
+        if ($recipients->isEmpty()) {
+            Log::info("Gönderilecek alıcı yok: {$this->campaign->name}");
+
+            // Kampanyayı tamamla
+            $this->campaign->update([
+                'status' => 'completed',
+                'completed_at' => now(),
+            ]);
+
+            return;
+        }
+
+        $delaySeconds = 0; // İlk email hemen gönderilir
+
+        foreach ($recipients as $index => $recipient) {
             // Kampanya durdurulmuş mu kontrol et
             $this->campaign->refresh();
             if ($this->campaign->status !== 'processing') {
@@ -36,18 +50,31 @@ class ProcessEmailCampaign implements ShouldQueue
                 break;
             }
 
-            SendCampaignEmail::dispatch($recipient, $this->campaign->delay_between_emails);
-        }
+            // Her email için artan gecikme ile kuyruğa ekle
+            SendCampaignEmail::dispatch($recipient)
+                ->delay(now()->addSeconds($delaySeconds));
 
-        // Tüm emailler gönderildi mi kontrol et
-        $this->campaign->refresh();
-        if ($this->campaign->sent_count + $this->campaign->failed_count >= $this->campaign->total_recipients) {
-            $this->campaign->update([
-                'status' => 'completed',
-                'completed_at' => now(),
+            Log::info("Email kuyruğa eklendi", [
+                'campaign_id' => $this->campaign->id,
+                'recipient' => $recipient->email,
+                'index' => $index + 1,
+                'total' => $recipients->count(),
+                'delay_seconds' => $delaySeconds,
+                'scheduled_time' => now()->addSeconds($delaySeconds)->format('Y-m-d H:i:s')
             ]);
 
-            Log::info("Kampanya tamamlandı: {$this->campaign->name}");
+            // Bir sonraki email için gecikmeyi artır
+            $delaySeconds += $this->campaign->delay_between_emails;
         }
+
+        Log::info("Kampanya işleme alındı", [
+            'campaign' => $this->campaign->name,
+            'total_emails' => $recipients->count(),
+            'total_duration' => gmdate('H:i:s', $delaySeconds),
+            'will_complete_at' => now()->addSeconds($delaySeconds)->format('Y-m-d H:i:s')
+        ]);
+
+        // Not: Status'u burada completed yapma!
+        // Her email gönderildikçe SendCampaignEmail job'ı kontrol edecek
     }
 }

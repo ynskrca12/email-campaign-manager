@@ -47,7 +47,7 @@ class EmailCampaignController extends Controller
     public function show(EmailCampaign $campaign)
     {
         $campaign->load(['recipients' => function($query) {
-            $query->latest()->limit(100);
+            $query->latest();
         }]);
 
         $stats = $this->campaignService->getCampaignStats($campaign);

@@ -232,6 +232,7 @@
                             <tbody class="bg-white divide-y divide-gray-200">
                                 @foreach($campaign->recipients as $recipient)
                                 <tr class="hover:bg-gray-50">
+                                    <td>{{ $loop->iteration }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $recipient->email }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $recipient->name ?? '-' }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap">
